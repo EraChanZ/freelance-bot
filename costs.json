@@ -1,0 +1,40 @@
+{
+  "one_time": false,
+  "buttons": [
+    [{
+      "action": {
+        "type": "text",
+        "label": "50"
+      },
+      "color": "default"
+    },
+    {
+      "action": {
+        "type": "text",
+        "label": "70"
+      },
+      "color": "default"
+    }],
+    [{
+      "action": {
+        "type": "text",
+        "label": "100"
+      },
+      "color": "default"
+    },
+    {
+      "action": {
+        "type": "text",
+        "label": "150"
+      },
+      "color": "default"
+    }],
+    [{
+      "action": {
+        "type": "text",
+        "label": "/назад в меню"
+      },
+      "color": "default"
+    }]
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "one_time": false,
+  "buttons": [
+    [{
+      "action": {
+        "type": "text",
+        "label": "Работа с текстами"
+      },
+      "color": "positive"
+    },
+      {
+        "action": {
+          "type": "text",
+          "label": "Дизайн"
+        },
+        "color": "positive"
+      },
+      {
+        "action": {
+          "type": "text",
+          "label": "Программирование"
+        },
+        "color": "positive"
+      }],
+      [{
+        "action": {
+          "type": "text",
+          "label": "Работа с переводами"
+        },
+        "color": "positive"
+      },
+      {
+        "action": {
+          "type": "text",
+          "label": "Менеджмент"
+        },
+        "color": "positive"
+      },
+      {
+        "action": {
+          "type": "text",
+          "label": "Интернет-реклама"
+        },
+        "color": "positive"
+      }],
+      [{
+        "action": {
+          "type": "text",
+          "label": "Инженерия"
+        },
+        "color": "positive"
+      },
+      {
+        "action": {
+          "type": "text",
+          "label": "аудио и видео"
+        },
+        "color": "positive"
+      },
+      {
+        "action": {
+          "type": "text",
+            "label": "Веб-разработка"
+        },
+        "color": "positive"
+      }],
+    [{
+      "action": {
+        "type": "text",
+        "label": "/стоп"
+      },
+      "color": "default"
+    },{
+      "action": {
+        "type": "text",
+        "label": "/назад в меню"
+      },
+      "color": "default"
+    }]
+  ]
+}
