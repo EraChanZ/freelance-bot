@@ -19,14 +19,14 @@
     [{
       "action": {
         "type": "text",
-        "label": "1"
+        "label": "заказ 1"
       },
       "color": "default"
     },
       {
       "action": {
         "type": "text",
-        "label": "2"
+        "label": "заказ 2"
       },
       "color": "default"
     }

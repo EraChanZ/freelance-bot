@@ -48,6 +48,12 @@
         "label": "/очистить"
       },
       "color": "default"
+    },{
+      "action": {
+        "type": "text",
+        "label": "/какпополнить"
+      },
+      "color": "default"
     }]
   ]
 }

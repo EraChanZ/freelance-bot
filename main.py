@@ -1,5 +1,6 @@
 import vk_api
 import requests
+import json
 import traceback
 from vk_api import VkUpload
 import random
@@ -24,51 +25,72 @@ def get_zakazs():
 def get_appl():
     return [i.replace('\n','').split(':::') for i in open('applications.txt','r').readlines()]
 def find_matches(arr1,arr2):
-    print(arr1,arr2)
     for a in arr2:
         if a in arr1:
             return True
     return False
 session = requests.Session()
 findinfo = {}
-token = '34925231a2be99ea9f7af0e19ecde0308fe33b2fe961d605b40a5023734c7a27cb8305f78b1da9051d3bc'
-login, password = '+79261572269', 'convneural123'
+api_access_token = '509009b5781017a1def95573c25e72e6' # токен можно получить здесь https://qiwi.com/api
+my_login = '+79261572269' # номер QIWI Кошелька в формате +79991112233
+
+s = requests.Session()
+s.headers['authorization'] = 'Bearer ' + api_access_token
+parameters = {'rows': '10'}
+token = 'f1523e7b58030eba019a22832d494ed287c3fab1cea68fe01b69b1a3e7d0475d5ca065276d317e4557b94'
 vk_session = vk_api.VkApi(token=token)
-vk_sessionu = vk_api.VkApi(login, password)
-upload = VkUpload(vk_sessionu)
 allskills = ["Работа с текстами","Дизайн","Программирование","Работа с переводами","Менеджмент","Интернет-реклама","Инженерия","аудио и видео","Веб-разработка"]
-try:
-    vk_sessionu.auth(token_only=True)
-except vk_api.AuthError as error_msg:
-    print(error_msg)
+
 try:
     vk_session.auth(token_only=True)
 except vk_api.AuthError as error_msg:
     print(error_msg)
 longpoll = VkLongPoll(vk_session)
-vku = vk_sessionu.get_api()
 vk = vk_session.get_api()
 nsym = '#$%'
 zakazinfo = {}
 translate = {'Дальше':1,'Назад':-1}
 for event in longpoll.listen():
+    with open('promocodes.json', 'r') as fp:
+        promocodes = json.load(fp)
     allusers = get_all()
     users_data = {}
+    paymenthistory = [i.replace('\n','') for i in open('payment.txt','r').readlines()]
     if allusers:
-        users_data = {int(i[0]):{'balance':i[1],'status':i[2],'reputation':i[3],'info':i[4]} for i in allusers}
+        users_data = {int(i[0]):{'balance':i[1],'status':i[2],'reputation':i[3],'info':i[4],'attachments':i[5]} for i in allusers}
     print(users_data)
+    try:
+        h = s.get('https://edge.qiwi.com/payment-history/v1/persons/' + my_login + '/payments', params=parameters)
+        data = dict(json.loads(h.text))
+        for d in data['data']:
+            if d['comment']:
+                if is_number(d['comment'].replace(' ', '')):
+                    if int(d['comment'].replace(' ', '')) in list(users_data.keys()):
+                        if str(d['txnId']) not in paymenthistory:
+                            print('Только что начислил')
+                            users_data[int(d['comment'].replace(' ', ''))]['balance'] = str(int(users_data[int(d['comment'].replace(' ', ''))]['balance'])+int(str(d['sum']['amount'])))
+                            vk.messages.send(
+                                user_id=int(d['comment'].replace(' ', '')),
+                                message='Вам на счет было начислено {} рублей'.format(str(d['sum']['amount'])),
+                                random_id=random.randint(1, 1000000000)
+                            )
+                            a = open('payment.txt','a')
+                            a.write(str(d['txnId'])+'\n')
+                            a.close()
+    except:
+        pass
     if event.type == VkEventType.MESSAGE_NEW and event.to_me and event.text:
-        print('kek')
         if event.from_user:
             if event.user_id not in list(users_data.keys()):
                 vk.messages.send(
                     user_id = event.user_id,
-                    message='Добро пожаловать новый пользователь !',keyboard=open('keyboard.json',"r",encoding="UTF-8").read(),
+                    message='Добро пожаловать новый пользователь !',
+                    keyboard=open('keyboard.json',"r",encoding="UTF-8").read(),
                     random_id = random.randint(1,1000000000)
                 )
                 a = open('database.txt', 'a')
                 a.write(str(event.user_id) + ':' + '100' + ':' + 'user' + ':'+'0'+'\n')
-                users_data[event.user_id] = {'balance':'100','status':'user','reputation':'0','info':''}
+                users_data[event.user_id] = {'balance':'100','status':'user','reputation':'0','info':'','attachments':''}
                 a.close()
             else:
                 if event.user_id in list(findinfo.keys()):
@@ -83,9 +105,7 @@ for event in longpoll.listen():
                                     random_id=random.randint(1, 1000000000)
                                 )
                                 allzakazs = get_zakazs()
-                                print(allzakazs)
                                 match_zakazs = []
-                                print(findinfo[event.user_id]['skills'])
                                 for z in allzakazs:
                                     mch = find_matches(z[2].split(','), findinfo[event.user_id]['skills'])
                                     if mch:
@@ -96,7 +116,11 @@ for event in longpoll.listen():
                                         message='Если заказ вам подходит, нажмите на соответствующую номеру заказа кнопку',
                                         random_id=random.randint(1, 1000000000)
                                     )
-                                    match_zakazs = sorted(match_zakazs, key=lambda x: x[4], reverse=True)
+                                    for i in range(len(match_zakazs)):
+                                        match_zakazs[i][4] = int(match_zakazs[i][4])
+                                    match_zakazs = sorted(match_zakazs, key=lambda x: x[4],reverse=True)
+                                    for i in range(len(match_zakazs)):
+                                        match_zakazs[i][4] = str(match_zakazs[i][4])
                                     findinfo[event.user_id]['matched_orders'] = match_zakazs
                                     findinfo[event.user_id]['page'] += 1
                                     findinfo[event.user_id]['pages'] = my_round(len(match_zakazs))
@@ -104,8 +128,12 @@ for event in longpoll.listen():
                                                      (findinfo[event.user_id]['page'] - 1) * 2:(
                                                                  (findinfo[event.user_id]['page'] - 1) * 2 + 2)]
                                     c = 0
+                                    msg = ''
                                     for cur in current_zakazs:
                                         c += 1
+                                        msg += 'Заказ №{}\n{}\n Цена выполнения: {} рублей\nПриоритет: {}\n'.format(
+                                                c, cur[5].replace(nsym, '\n'), cur[3], cur[4])+'-----------\n'
+                                        '''
                                         vk.messages.send(
                                             user_id=event.user_id,
                                             message='Заказ №{}\n{}\n Цена выполнения: {} рублей\nПриоритет: {}\n'.format(
@@ -114,10 +142,13 @@ for event in longpoll.listen():
                                             random_id=random.randint(1, 1000000000)
                                         )
                                         sleep(1)
+                                        '''
+                                    msg += 'Страница {}/{}'.format(findinfo[event.user_id]['page'],
+                                                                        findinfo[event.user_id]['pages'])
                                     vk.messages.send(
                                         user_id=event.user_id,
-                                        message='Страница {}/{}'.format(findinfo[event.user_id]['page'],
-                                                                        findinfo[event.user_id]['pages']),
+                                        message=msg,
+                                        keyboard=open('regulator.json', "r", encoding="UTF-8").read(),
                                         random_id=random.randint(1, 1000000000)
                                     )
                                     sleep(1)
@@ -163,14 +194,19 @@ for event in longpoll.listen():
                             del findinfo[event.user_id]
                         else:
                             if event.text in ['Дальше','Назад']:
-                                if int(findinfo[event.user_id]['page']) + translate[event.text] < int(findinfo[event.user_id]['pages']) and int(findinfo[event.user_id]['page']) + translate[event.text] > 0:
+                                if int(findinfo[event.user_id]['page']) + translate[event.text] <= int(findinfo[event.user_id]['pages']) and int(findinfo[event.user_id]['page']) + translate[event.text] > 0:
                                     findinfo[event.user_id]['page'] += translate[event.text]
                                     current_zakazs = findinfo[event.user_id]['matched_orders'][
                                                      (findinfo[event.user_id]['page'] - 1) * 2:(
                                                                  (findinfo[event.user_id]['page'] - 1) * 2 + 2)]
                                     c = 0
+                                    msg = ''
                                     for cur in current_zakazs:
                                         c += 1
+                                        msg += 'Заказ №{}\n{}\n Цена выполнения: {} рублей\nПриоритет: {}\n'.format(c,cur[5].replace(nsym,'\n'),
+                                                                                                              cur[3],
+                                                                                                              cur[4])+'-----------\n'
+                                        '''
                                         vk.messages.send(
                                             user_id=event.user_id,
                                             message='Заказ №{}\n{}\n Цена выполнения: {} рублей\nПриоритет: {}\n'.format(c,cur[5].replace(nsym,'\n'),
@@ -180,22 +216,27 @@ for event in longpoll.listen():
                                             random_id=random.randint(1, 1000000000)
                                         )
                                         sleep(1)
+                                    '''
+                                    msg += 'Страница {}/{}'.format(findinfo[event.user_id]['page'],
+                                                                        findinfo[event.user_id]['pages'])
+
                                     vk.messages.send(
                                         user_id=event.user_id,
-                                        message='Страница {}/{}'.format(findinfo[event.user_id]['page'],
-                                                                        findinfo[event.user_id]['pages']),
+                                        message=msg,
+                                        keyboard=open('regulator.json', "r", encoding="UTF-8").read(),
                                         random_id=random.randint(1, 1000000000)
                                     )
                                     sleep(1)
-                            elif event.text in ['1','2']:
-                                vk.messages.send(
-                                    user_id=event.user_id,
-                                    message='Теперь вы должны кратко описать реализацию этой задачи и почему именно вам должны ее доверить.',
-                                    keyboard=open('backtomain.json', "r", encoding="UTF-8").read(),
-                                    random_id=random.randint(1, 1000000000)
-                                )
-                                findinfo[event.user_id]['chosen'] = (int(findinfo[event.user_id]['page'])-1)*2+(int(event.text)-1)
-                                findinfo[event.user_id]['stage'] += 1
+                            elif event.text.replace('заказ ','') in ['1','2']:
+                                if (int(findinfo[event.user_id]['page'])-1)*2+(int(event.text.replace('заказ ',''))-1) < ((int(findinfo[event.user_id]['pages'])*2)):
+                                    vk.messages.send(
+                                        user_id=event.user_id,
+                                        message='Теперь вы должны кратко описать реализацию этой задачи и почему именно вам должны ее доверить.',
+                                        keyboard=open('backtomain.json', "r", encoding="UTF-8").read(),
+                                        random_id=random.randint(1, 1000000000)
+                                    )
+                                    findinfo[event.user_id]['chosen'] = (int(findinfo[event.user_id]['page'])-1)*2+(int(event.text.replace('заказ ',''))-1)
+                                    findinfo[event.user_id]['stage'] += 1
                     elif findinfo[event.user_id]['stage'] == 2:
                         if "/назад в меню" in event.text:
                             vk.messages.send(
@@ -365,13 +406,13 @@ for event in longpoll.listen():
                 elif '/лк' in event.text.lower():
                     vk.messages.send(
                         user_id=event.user_id,
-                        message='Личная информация: {}\nВаш баланс: {} монет\nВаш статус: {}\nОчки репутации: {}\nЧтобы пополнить ваш баланс монеток - пишите [id281303430|ЕМУ]'.format(users_data[event.user_id]['info'].replace(nsym,'\n'),users_data[event.user_id]['balance'],users_data[event.user_id]['status'],users_data[event.user_id]['reputation']),
+                        message='Личная информация: {}\nВаш баланс: {} монет\nВаш статус: {}\nОчки репутации: {}\n'.format(users_data[event.user_id]['info'].replace(nsym,'\n'),users_data[event.user_id]['balance'],users_data[event.user_id]['status'],users_data[event.user_id]['reputation']),
                         random_id=random.randint(1, 1000000000)
                     )
-                elif '/инфо' in event.text.lower():
+                elif '/инфо' in event.text.lower() or 'помощь' in event.text.lower() or 'команды' in event.text.lower():
                     vk.messages.send(
                         user_id=event.user_id,
-                        message='/лк - личная информация\n/инфо - информационное сообщение\n/заказ - сделать заказ\n/найти - найти заказ\n/прайс - Цены на различные действия\n/о себе {текст о себе} (вы добавляете общедоступную информацию про себя)\n/узнать {ID юзера} (кидает вам личную информацию о данном пользователе)\n/очистить (Очищает все заявки на ваши задания)',
+                        message='/лк - личная информация\n/инфо - информационное сообщение\n/заказ - сделать заказ\n/найти - найти заказ\n/прайс - Цены на различные действия\n/о себе {текст о себе} (вы добавляете общедоступную информацию про себя)\n/узнать {ID юзера} (кидает вам личную информацию о данном пользователе)\n/очистить (Очищает все заявки на ваши задания)\n /промокод {сам промокод}\n/какпополнить Кидает вам информацию о пополнение счёта',
                         random_id=random.randint(1, 1000000000)
                     )
                 elif '/пополнить ' in event.text.lower() and users_data[event.user_id]['status'] == 'moder':
@@ -398,6 +439,7 @@ for event in longpoll.listen():
                             vk.messages.send(
                                 user_id=event.user_id,
                                 message=users_data[int(event.text.replace('/узнать ',''))]['info'],
+                                attachment = users_data[int(event.text.replace('/узнать ',''))]['attachments'][:-1],
                                 random_id=random.randint(1, 1000000000)
                             )
                         else:
@@ -435,6 +477,11 @@ for event in longpoll.listen():
                         )
                 elif '/о себе ' in event.text.lower():
                     users_data[event.user_id]['info'] = event.text.replace('/о себе ','').replace('\n',nsym)
+                    if event.attachments:
+                        users_data[event.user_id]['attachments'] = ''
+                        for i in event.attachments:
+                            if 'type' not in i:
+                                users_data[event.user_id]['attachments'] += 'photo'+event.attachments[i]+','
                     vk.messages.send(
                         user_id=event.user_id,
                         message='Вы добавили информацию о себе,её сможет увидеть любой пользователь',
@@ -477,6 +524,44 @@ for event in longpoll.listen():
                             message='Заявок пока что нету.',
                             random_id=random.randint(1, 1000000000)
                         )
+                elif '/сздпрм ' in event.text.lower() and users_data[event.user_id]['status'] == 'moder':
+                    pr_data = event.text.lower().replace('/сздпрм ','').split(' ')
+                    promocodes[pr_data[0]] = {'value':pr_data[1],'trans':'0','users':''}
+                    vk.messages.send(
+                        user_id=event.user_id,
+                        message='Промокод создан',
+                        random_id=random.randint(1, 1000000000)
+                    )
+                elif '/какпополнить' in event.text.lower():
+                    vk.messages.send(
+                        user_id=event.user_id,
+                        message='Чтобы пополнить ваш баланс монеток - вам нужно закинуть сумму в рублях на аккаунт QIWI кошелька (+79261572269) и в комментариях к платежу указать свой ВК ID, ваш ID:{}.\nПомните, что платежи проверяет бот, соответственно кроме вашего ID в комментариях ничего не пишите. Если платеж не пришёл в течении 12 часов - напишите [id281303430|ЕМУ]\nНужно будет заскринить информацию об оплате'.format(str(event.user_id)),
+                        random_id=random.randint(1, 1000000000)
+                    )
+                elif '/промокод ' in event.text.lower():
+                    promo = event.text.lower().replace('/промокод ','')
+                    if promo in list(promocodes.keys()):
+                        if str(event.user_id) in promocodes[promo]['users']:
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                message='Вы уже вводили данный промокод',
+                                random_id=random.randint(1, 1000000000)
+                            )
+                        else:
+                            promocodes[promo]['users'] += str(event.user_id) + ','
+                            promocodes[promo]['trans'] = str(int(promocodes[promo]['trans']) + 1)
+                            users_data[event.user_id]['balance'] = str(int(users_data[event.user_id]['balance']) + int(promocodes[promo]['value']))
+                            vk.messages.send(
+                                user_id=event.user_id,
+                                message='На ваш счёт было начислено {} монеток'.format(promocodes[promo]['value']),
+                                random_id=random.randint(1, 1000000000)
+                            )
+                    else:
+                        vk.messages.send(
+                            user_id=event.user_id,
+                            message='Промокод не найден или срок действия истёк',
+                            random_id=random.randint(1, 1000000000)
+                        )
                 elif '/найти' in event.text.lower():
                     if int(users_data[event.user_id]['reputation']) < -100:
                         vk.messages.send(
@@ -507,6 +592,7 @@ for event in longpoll.listen():
                     )
     f = open('database.txt', 'w')
     for i in users_data:
-        print()
-        f.write(str(i)+':::'+users_data[int(i)]['balance']+':::'+users_data[int(i)]['status']+':::'+users_data[int(i)]['reputation']+':::'+users_data[int(i)]['info']+'\n')
+        f.write(str(i)+':::'+users_data[int(i)]['balance']+':::'+users_data[int(i)]['status']+':::'+users_data[int(i)]['reputation']+':::'+users_data[int(i)]['info']+':::'+users_data[int(i)]['attachments']+'\n')
     f.close()
+    with open('promocodes.json', 'w') as fp:
+        json.dump(promocodes, fp)
