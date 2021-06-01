@@ -31,13 +31,13 @@ def find_matches(arr1,arr2):
     return False
 session = requests.Session()
 findinfo = {}
-api_access_token = '509009b5781017a1def95573c25e72e6' # токен можно получить здесь https://qiwi.com/api
-my_login = '+79261572269' # номер QIWI Кошелька в формате +79991112233
+api_access_token = '****' # токен можно получить здесь https://qiwi.com/api
+my_login = '*****' # номер QIWI Кошелька в формате +79991112233
 
 s = requests.Session()
 s.headers['authorization'] = 'Bearer ' + api_access_token
 parameters = {'rows': '10'}
-token = 'f1523e7b58030eba019a22832d494ed287c3fab1cea68fe01b69b1a3e7d0475d5ca065276d317e4557b94'
+token = '******'
 vk_session = vk_api.VkApi(token=token)
 allskills = ["Работа с текстами","Дизайн","Программирование","Работа с переводами","Менеджмент","Интернет-реклама","Инженерия","аудио и видео","Веб-разработка"]
 def make_unicode(input):
